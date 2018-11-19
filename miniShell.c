@@ -11,7 +11,7 @@
 #include <signal.h>
 
 tline *comandos; //Variable para introducir los comandos que entren 
-int** crear_pipes(void){
+int** crear_pipes(){
 		int **p; //array de pipes
 		int i;
 		p = malloc(sizeof(int*)*comandos->ncommands-1);//reservamos el espacio en memoria   para abrir los pipes necesarios
@@ -32,13 +32,30 @@ void cerrar_pipes(int **p){
 		free(p);
 }
 void ejecutarComandos(void){
-	if (comandos->commands)[0].redirect_input != NULL){
-		
+	int i = 0;
+	int fd;
+	//<inicio de redirección de datos
+	if (comandos->redirect_output!= NULL){
+		fd=open(comandos->redirect_input,O_RDONLY); //si solo lees "open"
+		dup2(fd,0);
+
+	}
+	if (comandos->redirect_output!= NULL){
+		fd=creat(comandos->redirect_output,0644);//si vas a escribir "creat"
+		dup2(fd,1);
 
 	} 
-	execv(comandos->commands[0].filename,comandos->commands[0].argv);
-	fprintf(stderr, "Error. %s\n", comandos->commands[0].filename);
-	exit(1);
+	if (comandos->redirect_output!= NULL){
+		fd=creat(comandos->redirect_error,0644);//si vas a escribir "creat"
+		dup2(fd,2);
+
+	}
+	//fin de redirección de datos>
+	for (i;i<comandos->ncommands;i++){	
+		execv(comandos->commands[i].filename,comandos->commands[i].argv);
+		fprintf(stderr, "Error. %s\n", comandos->commands[i].filename);
+		exit(1);
+	}
 }
 
 int main(void) {
