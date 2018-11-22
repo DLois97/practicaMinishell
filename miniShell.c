@@ -32,32 +32,124 @@ void cerrar_pipes(int **p){
 		free(p);
 }
 void ejecutarComandos(void){
-	int i = 0;
+	int i;
 	int fd;
-	//<inicio de redirección de datos
-	if (comandos->redirect_output!= NULL){
+	int *pids;
+	int pid;
+	int **pipes;
+	int cmd = comandos ->ncommands;
+	pids= malloc(sizeof(int)*comandos->ncommands);
+	
+
+//fin de redirección de datos>
+	pipes = crear_pipes();
+
+	for (i=0;i<comandos->ncommands;i++){
+		pid = fork();
+		if (pid < 0){//si es menos de 0 hay un error
+			fprintf(stderr, "Error. %s\n", comandos->commands[i].filename);
+			exit(1);
+		}
+		pids[i]=pid;
+		if (pid == 0){
+				//<inicio de redirección de datos
+	if ((comandos->redirect_input!= NULL)&&(i==0)){
 		fd=open(comandos->redirect_input,O_RDONLY); //si solo lees "open"
 		dup2(fd,0);
+		close(fd);
 
 	}
-	if (comandos->redirect_output!= NULL){
+	if ((comandos->redirect_output!= NULL)&&(i==cmd-1)){
 		fd=creat(comandos->redirect_output,0644);//si vas a escribir "creat"
 		dup2(fd,1);
+		close(fd);
 
 	} 
-	if (comandos->redirect_output!= NULL){
+	if ((comandos->redirect_error!= NULL)&&(i==cmd-1)){
 		fd=creat(comandos->redirect_error,0644);//si vas a escribir "creat"
 		dup2(fd,2);
+		close(fd);
 
-	}
-	//fin de redirección de datos>
-	for (i;i<comandos->ncommands;i++){	
+	}	//es 0 si es el hijo
+			if (cmd > 1){
+				if(i==0){ //si es el primer comando ejecutando redirecciona la entrada del pipe para meter datos
+					dup2(pipes[i][1],1);
+				} else if(i==cmd-1){//si es el último comando redirecciona la salida del pipe para recibir datos
+					dup2(pipes[i-1][0],0);
+				} else {
+					dup2(pipes[i][1],1);
+					dup2(pipes[i-1][0],0);
+				}
+			cerrar_pipes(pipes);
+			}
 		execv(comandos->commands[i].filename,comandos->commands[i].argv);
 		fprintf(stderr, "Error. %s\n", comandos->commands[i].filename);
 		exit(1);
+		}
 	}
+	cerrar_pipes(pipes);
 }
+	/*pipes = crear_pipes();
+	for(i=0; i<comandos->ncommands; i++){
+		pid= fork();
+		if(pid<0){
+			fprintf(stderr,"Error. fork\n");
+			exit(1);
+		}
+		pids[i]=pid;
+		if(pid==0){
+			if(!comandos->background){
+				signal(SIGINT, SIG_DFL);
+				signal(SIGQUIT, SIG_DFL);
+			}
+			if((i==0) && (comandos->redirect_input!=NULL)){
+				fd=open(comandos->redirect_input,O_RDONLY);
+				if(fd<0){
+					fprintf(stderr,"Error.%s \n",comandos->redirect_input);
+					exit(1);
+				}
+				dup2(fd,0);
+				close(fd);
+			}
+			if((i==comandos->ncommands-1) && (comandos->redirect_output!=NULL)){
+				fd=creat(comandos->redirect_output,0644);
+				if(fd<0){
+					fprintf(stderr,"Error.%s \n",comandos->redirect_output);
+					exit(1);
+				}
+				dup2(fd,1);
+				close(fd);
+			}
+			if((i==comandos->ncommands-1) && (comandos->redirect_error!=NULL)){
+				fd=creat(comandos->redirect_error,0644);
+				if(fd<0){
+					fprintf(stderr,"Error.%s /n",comandos->redirect_error);
+					exit(1);
+				}
+				dup2(fd,2);
+				close(fd);
+			}
+			if(cmd>1){
+				if(i==0)
+		    		dup2(pipes[i][1],1);
+				else if(i==cmd-1){
+					dup2(pipes[i-1][0],0);
+				}
+				else{
+					dup2(pipes[i][1],1);
+					dup2(pipes[i-1][0],0);
 
+				}
+				cerrar_pipes(pipes);
+			}
+			execv(comandos->commands[i].filename,comandos->commands[i].argv);
+			fprintf(stderr, "Error. %s\n", comandos->commands[i].filename);
+			exit(1);
+		}
+}
+cerrar_pipes(pipes);
+}
+*/
 int main(void) {
 	char buffer[1024];
 	while (!feof(stdin)){
